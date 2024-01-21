@@ -10,9 +10,11 @@ from models.subtype import load_malignant_subtype_model
 from tensorflow.keras.applications.resnet50 import preprocess_input
 import base64
 import io
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app) # Allow CORS for all routes
 app.config['UPLOAD_FOLDER'] = 'E:\\L4S1\\IS4910 - Comprehensive Group Project\\FlaskDemo\\uploads'
 
 classes = ['Benign', 'Malignant', 'Normal']
@@ -39,16 +41,26 @@ malignant_subtype_mapping = {
 @app.route('/api/process-image', methods=['POST'])
 def process_image():
     data = request.get_json()
+    print("Received data:", data)
     
-    if 'image' not in data:
+    # Check if image data is present and in the correct format
+    if 'image' not in data or not isinstance(data['image'], list) or len(data['image']) == 0:
         return jsonify({'message': 'No image data found in the request'}), 400
+    
+    image_info = data['image'][0]
+    if 'url' not in image_info:
+        return jsonify({'message': 'Image URL is missing'}), 400
 
-    # Decode the base64 image
-    image_data = data['image']
-    image_data = image_data.split(';base64,')[-1]
-    image_data = base64.b64decode(image_data)
-    image_data = io.BytesIO(image_data)
-    image_data = Image.open(image_data)
+    base64_image_data = image_info['url'].split(';base64,')[-1]
+    if not base64_image_data:
+        return jsonify({'message': 'Base64 image data is missing'}), 400
+
+    try:
+        image_data = base64.b64decode(base64_image_data)
+        image_data = io.BytesIO(image_data)
+        image_data = Image.open(image_data)
+    except (base64.binascii.Error, UnidentifiedImageError):
+        return jsonify({'message': 'Invalid image data'}), 400
 
     # Convert the PIL Image to a NumPy array
     image_data = image_data.convert('RGB')
@@ -64,7 +76,6 @@ def process_image():
     class_index = np.argmax(classification_prediction, axis=1)[0]
     class_label = classes[class_index]  # classes should be defined as ['Benign', 'Malignant', 'Normal']
     
-    # Subtype classification
     # Subtype classification
     subtype_label = 'Not applicable'
     if class_label == 'Benign':
