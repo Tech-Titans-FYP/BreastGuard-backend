@@ -1,42 +1,24 @@
 from flask import Flask, request, jsonify
 import numpy as np
 from flask import request, jsonify
-from models.classification import load_classification_model
-from utils.image_processing import load_preprocess_image_classification, load_and_prep_image_segmentation
-from utils.gradcam import make_gradcam_heatmap
-from models.segmentation import load_segmentation_model
-from models.subtype import load_benign_subtype_model
-from models.subtype import load_malignant_subtype_model
 from tensorflow.keras.applications.resnet50 import preprocess_input
 import base64
 import io
 from PIL import Image, UnidentifiedImageError
 from flask_cors import CORS
+from utils import (load_and_prep_image_segmentation,
+                   predict_subtype, load_preprocess_image_classification, 
+                   make_gradcam_heatmap, benign_subtype_mapping, malignant_subtype_mapping)
+from models import (load_segmentation_model, 
+                    load_malignant_subtype_model, load_benign_subtype_model,
+                    load_classification_model, predict_with_model)
+from tensorflow.keras.applications.resnet50 import preprocess_input
 
 app = Flask(__name__)
 CORS(app) # Allow CORS for all routes
 app.config['UPLOAD_FOLDER'] = 'E:\\L4S1\\IS4910 - Comprehensive Group Project\\FlaskDemo\\uploads'
 
 classes = ['Benign', 'Malignant', 'Normal']
-
-benign_subtype_mapping = {
-    0: 'Cysts',
-    1: 'Fibroadenoma',
-    2: 'Galactoceles and sebaceous cysts',
-    3: 'Post-operative changes and fat necrosis',
-    4: 'Papiloma',
-    5: 'Inflammatory conditions'
-}
-
-malignant_subtype_mapping = {
-    0: 'Carcinoma in situ and microcalcifications',
-    1: 'Inflammatory carcinoma',
-    2: 'Lymphoma',
-    3: 'Ductal Carcinoma In Situ',
-    4: 'Invasive Ductal Carcinoma',
-    5: 'Invasive Lobular Carcinoma',
-    6: 'Metastatic disease'
-}
 
 @app.route('/api/process-image', methods=['POST'])
 def process_image():
@@ -72,18 +54,25 @@ def process_image():
     processed_image_segmentation = load_and_prep_image_segmentation(image_np)
     
     # Classification
-    classification_prediction = load_classification_model.predict(processed_image_classification)
-    class_index = np.argmax(classification_prediction, axis=1)[0]
-    class_label = classes[class_index]  # classes should be defined as ['Benign', 'Malignant', 'Normal']
+    # processed_image_classification = load_preprocess_image_classification(uploaded_file)
+    classification_prediction = predict_with_model(load_classification_model, processed_image_classification)
+    class_index = np.argmax(classification_prediction, axis=1)[0]  # Extract the first element
+    class_label = classes[class_index]
+
+    # classification_prediction = load_classification_model.predict(processed_image_classification)
+    # class_index = np.argmax(classification_prediction, axis=1)[0]
+    # class_label = classes[class_index]  # classes should be defined as ['Benign', 'Malignant', 'Normal']
     
     # Subtype classification
     subtype_label = 'Not applicable'
     if class_label == 'Benign':
-        subtype_prediction = load_benign_subtype_model.predict(processed_image_classification)
+        subtype_prediction = predict_subtype(load_benign_subtype_model, benign_subtype_mapping)
+        # subtype_prediction = load_benign_subtype_model.predict(processed_image_classification)
         subtype_index = np.argmax(subtype_prediction, axis=1)[0]
         subtype_label = benign_subtype_mapping.get(subtype_index, 'Unknown subtype')
     elif class_label == 'Malignant':
-        subtype_prediction = load_malignant_subtype_model.predict(processed_image_classification)
+        subtype_prediction = predict_subtype(load_malignant_subtype_model, malignant_subtype_mapping)
+        # subtype_prediction = load_malignant_subtype_model.predict(processed_image_classification)
         subtype_index = np.argmax(subtype_prediction, axis=1)[0]
         subtype_label = malignant_subtype_mapping.get(subtype_index, 'Unknown subtype')
         
