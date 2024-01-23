@@ -1,9 +1,11 @@
 # Import libraries
-from PIL import Image
-import numpy as np
 import tensorflow as tf
 from keras import backend as K
-# import cv2
+import cv2
+import numpy as np
+from PIL import Image
+import base64
+import io
 
 # ---------------------Classification---------------------
 
@@ -126,13 +128,11 @@ def resize_mask_for_display(mask, display_size=(300, 300)):
     return mask_image.resize(display_size)
 
 # ---------------------Diagnosis classification---------------------
-
-# Function to preprocess the image for subtype classification
-def preprocess_for_subtype(image, size=256):
-    # Assuming the image needs to be resized and normalized as in your subtype classification code
-    image = image.resize((size, size))
-    image = np.array(image) / 255.0
-    return np.expand_dims(image, axis=0)
+def preprocess_for_subtype(image_np, size=256):
+    image = Image.fromarray(image_np).resize((size, size))
+    processed_image = np.array(image)
+    processed_image = np.expand_dims(processed_image, axis=0)
+    return processed_image
 
 # Dictionary mapping the subtype abbreviations to full names
 subtype_full_names = {
@@ -224,29 +224,34 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None
     heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
     return heatmap.numpy()
 
-# def display_gradcam(uploaded_file, heatmap, alpha=0.4, display_size=(300, 300)):
-#     # Load the original image
-#     original_img = Image.open(uploaded_file).convert('RGB')
-#     original_img = np.array(original_img)
+def display_gradcam(image_np, heatmap, alpha=0.4):
+    # Ensure that both heatmap and image_np are of type np.ndarray
+    heatmap = np.array(heatmap)
+    image_np = np.array(image_np)
 
-#     # Resize the heatmap to match the original image size
-#     heatmap = cv2.resize(heatmap, (original_img.shape[1], original_img.shape[0]))
-    
-#     # Invert the heatmap
-#     heatmap = 1 - heatmap  # Invert the heatmap colors
+    # Resize the heatmap to match the image size
+    heatmap = cv2.resize(heatmap, (image_np.shape[1], image_np.shape[0]))
 
-#     # Convert the heatmap to a color map
-#     heatmap = np.uint8(255 * heatmap)
-#     heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+    # Invert the heatmap
+    heatmap = 1 - heatmap  # Invert the heatmap colors
 
-#     # Superimpose the heatmap on the original image
-#     superimposed_img = heatmap * alpha + original_img
-#     superimposed_img = np.clip(superimposed_img, 0, 255).astype(np.uint8)
+    # Convert the heatmap to a color map
+    heatmap = (heatmap * 255).astype(np.uint8)
+    heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
 
-#     # Convert the superimposed image to PIL for resizing and display
-#     superimposed_img_pil = Image.fromarray(superimposed_img)
-    
-#     # Resize the image for display
-#     resized_image = superimposed_img_pil.resize(display_size, Image.LANCZOS)
+    # Superimpose the heatmap on the image
+    superimposed_img = cv2.addWeighted(image_np, 1 - alpha, heatmap, alpha, 0)
+    superimposed_img = np.clip(superimposed_img, 0, 255).astype(np.uint8)
 
-#     return resized_image
+    # Convert the superimposed image to PIL for resizing and display
+    superimposed_img_pil = Image.fromarray(superimposed_img)
+
+    # Resize the image for display
+    resized_image = superimposed_img_pil.resize((400, 400), Image.LANCZOS)
+
+    # Convert the resized image to a base64-encoded string
+    with io.BytesIO() as buffer:
+        resized_image.save(buffer, format="PNG")
+        base64_image = base64.b64encode(buffer.getvalue()).decode()
+
+    return base64_image
