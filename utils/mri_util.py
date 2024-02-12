@@ -138,25 +138,25 @@ def resize_for_display(image, max_size=(300, 300)):
     new_size = (int(factor * image.size[0]), int(factor * image.size[1]))
     return image.resize(new_size, Image.ANTIALIAS)
 
-# def segment_tumor(image, unet_model):
-#     SIZE = 128  # The size used for the U-Net model
-#     # Resize input image to the size expected by the model
-#     resized_image = cv2.resize(image, (SIZE, SIZE))
-#     resized_image = resized_image / 255.0  # Normalize the image as done during training
-#     resized_image = np.expand_dims(resized_image, axis=0)
+def segment_tumor(image, unet_model):
+    SIZE = 128  # The size used for the U-Net model
+    # Resize input image to the size expected by the model
+    resized_image = cv2.resize(image, (SIZE, SIZE))
+    resized_image = resized_image / 255.0  # Normalize the image as done during training
+    resized_image = np.expand_dims(resized_image, axis=0)
 
-#     # Predict the mask
-#     mask = unet_model.predict(resized_image)
-#     mask = (mask > 0.5).astype(np.uint8)[0, :, :, 0]
+    # Predict the mask
+    mask = unet_model.predict(resized_image)
+    mask = (mask > 0.5).astype(np.uint8)[0, :, :, 0]
 
-#     # Resize mask back to the original image size
-#     mask_resized = cv2.resize(mask, (image.shape[1], image.shape[0]))
+    # Resize mask back to the original image size
+    mask_resized = cv2.resize(mask, (image.shape[1], image.shape[0]))
 
-#     # Create an output image that overlays the white mask on the original image
-#     segmented_image = image.copy()
-#     segmented_image[mask_resized == 1] = 255  # Apply white color where mask is positive
+    # Create an output image that overlays the white mask on the original image
+    segmented_image = image.copy()
+    segmented_image[mask_resized == 1] = 255  # Apply white color where mask is positive
 
-#     return segmented_image
+    return segmented_image
 
 def preprocess_for_subtype(image_np, size=224):
     image = Image.fromarray(image_np).resize((size, size))
