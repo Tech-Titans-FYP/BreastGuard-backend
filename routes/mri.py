@@ -85,9 +85,9 @@ def mri_image_modality():
         'classification': predicted_class_name,
         'subtype': subtype_full_name,
         # 'subtype_description': subtype_description,
-        'gradcam': gradcam_image,  # Make sure gradcam_image is also encoded in base64
+        'gradcam': gradcam_image,  # Ensure this is always set, even if to "Not applicable"
         # 'processed_original_image': processed_original_image_base64,
-        # 'processed_mask_image': segmented_image_base64
+        # 'processed_mask_image': processed_mask_image_base64
     }
     print(results)
     return jsonify(results)
