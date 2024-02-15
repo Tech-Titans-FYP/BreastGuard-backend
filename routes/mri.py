@@ -54,7 +54,7 @@ def mri_image_modality():
     print("Predicted class:", predicted_class_name)
 
     # Subtype identification
-    if predicted_class_name in ['Malignant', 'Benign']:
+    if predicted_class_name in ['Malignant']:
         # ---------------------Diagnosis classification---------------------
         if predicted_class_name == 'Malignant':
             subtype_full_name = predict_subtype(subtype_model, image_np, subtype_mapping)
@@ -78,16 +78,24 @@ def mri_image_modality():
         print('Generating Grad-CAM heatmap...')
         gradcam_image = overlay_heatmap(image_np, heatmap)
 
+    else:
+        # Handle the 'Normal' or other cases
+        subtype_full_name = "Not applicable"  # or another appropriate default value
+        # subtype_description = "Not applicable"
+        gradcam_image = "Not applicable"
+        # processed_original_image_base64 = "Not applicable"
+        # processed_mask_image_base64 = "Not applicable"
+
     # ---------------------U-Net Segmentation---------------------    
 
     # Combine results and send back
     results = {
         'classification': predicted_class_name,
         'subtype': subtype_full_name,
-        # 'subtype_description': subtype_description,
+        # 'subtype_description': subtype_description if subtype_description is not None else "Unknown",
         'gradcam': gradcam_image,  # Make sure gradcam_image is also encoded in base64
-        # 'processed_original_image': processed_original_image_base64,
-        # 'processed_mask_image': segmented_image_base64
+        # 'processed_original_image': processed_original_image_base64 if processed_original_image_base64 is not None else "Unknown",
+        # 'processed_mask_image': processed_mask_image_base64 if processed_mask_image_base64 is not None else "Unknown"
     }
     print(results)
     return jsonify(results)
