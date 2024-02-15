@@ -42,7 +42,7 @@ weight_factor = 0.5
 custom_loss_fn = weighted_custom_loss(weight_factor)
 
 def load_preprocess_image(image_np):
-    SIZE = 224
+    SIZE = 128
     # image = Image.open(image_np).convert('RGB')
     # image = image.resize((SIZE, SIZE))
     # processed_image = custom_preprocessing(np.array(image))
@@ -131,7 +131,7 @@ def get_img_array(uploaded_file, size):
     img_array = np.expand_dims(img_array, axis=0)
     return img_array
 
-img_size = (224, 224)
+img_size = (128, 128)
 
 def resize_for_display(image, max_size=(300, 300)):
     factor = min(max_size[0] / image.size[0], max_size[1] / image.size[1])
