@@ -58,8 +58,6 @@ def mri_image_modality():
         # ---------------------Diagnosis classification---------------------
         if predicted_class_name == 'Malignant':
             subtype_full_name = predict_subtype(subtype_model, image_np, subtype_mapping)
-        else:
-            return
 
         print("Subtype:", subtype_full_name)
 
