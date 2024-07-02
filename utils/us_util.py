@@ -1,3 +1,5 @@
+
+
 # Import libraries
 import tensorflow as tf
 from keras import backend as K
@@ -21,8 +23,8 @@ def load_preprocess_image_classification(image_np, size=256):
 
 def resize_image_for_display(image, max_display_size=(300, 300)):
     """
-    Resize the uploaded image for display on Streamlit while maintaining the aspect ratio.
-    This does not affect the image used for model predictions.
+    #Resize the uploaded image for display on Streamlit while maintaining the aspect ratio.
+    #This does not affect the image used for model predictions.
     """
     # Calculate aspect ratio
     aspect_ratio = image.width / image.height
@@ -256,3 +258,5 @@ def display_gradcam(image_np, heatmap, alpha=0.4):
         base64_image = base64.b64encode(buffer.getvalue()).decode()
 
     return base64_image
+
+    
