@@ -129,7 +129,11 @@ def histopathology_image_modality():
     results = {
         'classification': predicted_class,
         'subtype': subtype_class,
-        'subtype_description': subtype_info,
+        'subtype_description': subtype_descriptions[subtype_class]['description'],
+        'features': subtype_descriptions[subtype_class]['features'],
+        'guidance': subtype_descriptions[subtype_class]['guidance'],
         'gradcam': gradcam_image
     }
+    print(results)
     return jsonify(results)
+
