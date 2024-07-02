@@ -59,7 +59,7 @@ def mri_image_modality():
         if predicted_class_name == 'Malignant':
             subtype_full_name = predict_subtype(subtype_model, image_np, subtype_mapping)
 
-        print("Subtype:", subtype_full_name)
+            print("Subtype:", subtype_full_name)
 
         # ---------------------Applying Grad CAM---------------------
         # Preprocess the image for Grad-CAM
@@ -81,7 +81,7 @@ def mri_image_modality():
     # Combine results and send back
     results = {
         'classification': predicted_class_name,
-        'subtype': subtype_full_name,
+        # 'subtype': subtype_full_name,
         # 'subtype_description': subtype_description,
         'gradcam': gradcam_image,  # Ensure this is always set, even if to "Not applicable"
         # 'processed_original_image': processed_original_image_base64,

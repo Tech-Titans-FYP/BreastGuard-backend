@@ -41,13 +41,21 @@ def weighted_custom_loss(weight_factor):
 weight_factor = 0.5
 custom_loss_fn = weighted_custom_loss(weight_factor)
 
+# def load_preprocess_image(image_np):
+#     SIZE = 128
+#     # image = Image.open(image_np).convert('RGB')
+#     # image = image.resize((SIZE, SIZE))
+#     # processed_image = custom_preprocessing(np.array(image))
+#     image = Image.fromarray(image_np).resize((SIZE, SIZE))
+#     processed_image = np.array(image)
+#     processed_image = np.expand_dims(processed_image, axis=0)
+#     return processed_image
+
 def load_preprocess_image(image_np):
     SIZE = 128
-    # image = Image.open(image_np).convert('RGB')
-    # image = image.resize((SIZE, SIZE))
-    # processed_image = custom_preprocessing(np.array(image))
     image = Image.fromarray(image_np).resize((SIZE, SIZE))
     processed_image = np.array(image)
+    processed_image = processed_image / 255.0  # Ensure normalization if it was part of training
     processed_image = np.expand_dims(processed_image, axis=0)
     return processed_image
 
