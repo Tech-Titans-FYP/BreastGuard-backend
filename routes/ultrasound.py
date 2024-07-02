@@ -56,7 +56,7 @@ def ultrasound_image_modality():
     confidence = np.max(prediction)
 
     # Define a confidence threshold
-    CONFIDENCE_THRESHOLD = 0.7  # Adjust based on your model's performance and requirements
+    CONFIDENCE_THRESHOLD = 0.2  # Adjust based on your model's performance and requirements
 
     if confidence < CONFIDENCE_THRESHOLD:
         return jsonify({'message': 'The submitted image could not be confidently classified as an ultrasound image.', 'isUltrasound': False}), 400
