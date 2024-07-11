@@ -1,5 +1,3 @@
-# app.py
-
 from flask import Flask
 from flask_cors import CORS
 from routes.ultrasound import ultrasound_image_modality
