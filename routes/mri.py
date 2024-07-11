@@ -3,25 +3,20 @@ from flask import request, jsonify
 import base64
 import io
 from PIL import Image, UnidentifiedImageError
-from tensorflow.keras.applications.resnet50 import preprocess_input
+from tensorflow.keras.applications.densenet import preprocess_input
 import cv2
-from models.mri_model import (
-    load_classification_mri_model, load_malignant_subtype_mri_model, load_segmentation_mri_model
-)
-from utils.mri_util import (
-    load_preprocess_image, predict, classes, grad_cam, overlay_heatmap, predict_subtype, 
-    subtype_mapping, segment_tumor, convert_to_base64
-)
+from models.mri_model import load_classification_mri_model, load_segmentation_ultrasound_model, load_subtype_model
+from utils.mri_util import load_preprocess_image, predict, classes, grad_cam, overlay_heatmap, segment_tumor, convert_to_base64, calculate_max_diameter, categorize_tumor_size, calculate_tumor_shape_features, categorize_shape, predict_subtype
+
 
 classification_model = load_classification_mri_model()
-subtype_model = load_malignant_subtype_mri_model()
-segmentation_model = load_segmentation_mri_model()
+segmentation_model = load_segmentation_ultrasound_model()
+subtype_model = load_subtype_model()
 
 def mri_image_modality():
     data = request.get_json()
     print("Received data:", data)
     
-    # Check if image data is present and in the correct format
     if 'image' not in data or not isinstance(data['image'], list) or len(data['image']) == 0:
         return jsonify({'message': 'No image data found in the request'}), 400
     
@@ -40,52 +35,64 @@ def mri_image_modality():
     except (base64.binascii.Error, UnidentifiedImageError):
         return jsonify({'message': 'Invalid image data'}), 400
 
-    # Convert the PIL Image to a NumPy array
     image_data = image_data.convert('RGB')
     image_np = np.array(image_data)
 
     gradcam_image = None
     
-    # Classification
-    processed_image_classification = load_preprocess_image(image_np)
-    prediction = predict(classification_model, processed_image_classification)
-    predicted_class_index = np.argmax(prediction, axis=1)[0]  # Extract the first element
+    # Ensure target size is 128x128 for classification and segmentation models
+    processed_image_classification = load_preprocess_image(image_np, target_size=(128, 128))
+    print(f"Processed image shape: {processed_image_classification.shape}")
+    prediction = classification_model.predict(processed_image_classification)
+    print(f"Classification prediction: {prediction}")
+
+    predicted_class_index = np.argmax(prediction, axis=1)[0]
     predicted_class_name = classes[predicted_class_index]
     print("Predicted class:", predicted_class_name)
 
-    # Subtype identification
-    if predicted_class_name in ['Malignant', 'Benign']:
-        # ---------------------Diagnosis classification---------------------
-        if predicted_class_name == 'Malignant':
-            subtype_full_name = predict_subtype(subtype_model, image_np, subtype_mapping)
+    gradcam_img_array = preprocess_input(processed_image_classification)
+    layer_name = 'conv5_block32_2_conv'
+    heatmap = grad_cam(classification_model, gradcam_img_array, predicted_class_index, layer_name)
 
-            print("Subtype:", subtype_full_name)
+    print('Generating Grad-CAM heatmap...')
+    gradcam_image_np = overlay_heatmap(image_np, heatmap)
 
-        # ---------------------Applying Grad CAM---------------------
-        # Preprocess the image for Grad-CAM
-        # gradcam_img_array = preprocess_input(get_img_array(uploaded_file, img_size))
-        gradcam_img_array = preprocess_input(processed_image_classification)
+    gradcam_image_pil = Image.fromarray(gradcam_image_np)
+    gradcam_image = convert_to_base64(gradcam_image_pil)
 
-        layer_name = 'conv5_block32_2_conv'
+    segmented_image, mask_resized = segment_tumor(image_np, segmentation_model)
+    segmented_image_pil = Image.fromarray(segmented_image.astype('uint8'), 'RGB')
+    segmented_image_base64 = convert_to_base64(segmented_image_pil)
 
-        # Generate heatmap
-        # heatmap = grad_cam(gradcam_img_array, classification_model, 'conv5_block32_2_conv')
-        heatmap = grad_cam(classification_model, gradcam_img_array, predicted_class_index, layer_name)
+    # Tumor size measurement
+    tumor_size_px, tumor_size_mm = calculate_max_diameter(mask_resized, pixel_spacing=0.5)
+    tumor_category = categorize_tumor_size(tumor_size_mm)
 
-        # Display Grad-CAM heatmap
-        print('Generating Grad-CAM heatmap...')
-        gradcam_image = overlay_heatmap(image_np, heatmap)
+    # Tumor shape measurement
+    shape_features_px = calculate_tumor_shape_features(mask_resized, pixel_spacing=1.0)
+    shape_features_mm = calculate_tumor_shape_features(mask_resized, pixel_spacing=0.5)
+    shape_category = categorize_shape(shape_features_mm)
+    
+    # Subtype prediction
+    if predicted_class_name == "Malignant":
+        processed_image_subtype = load_preprocess_image(image_np, target_size=(224, 224))
+        predicted_subtype_index = predict_subtype(processed_image_subtype, subtype_model, target_size=(224, 224))
+        predicted_subtype_name = ["Invasive Ductal Carcinoma", "Invasive Lobular Carcinoma", "Mucinous Carcinoma", "No Residual", "Paget Disease of the Breast"][predicted_subtype_index]  # Replace with actual subtype names
+        print(f"Predicted subtype index: {predicted_subtype_index}, Subtype name: {predicted_subtype_name}")
+    else:
+        predicted_subtype_name = "N/A"
 
-    # ---------------------U-Net Segmentation---------------------    
-
-    # Combine results and send back
     results = {
         'classification': predicted_class_name,
-        # 'subtype': subtype_full_name,
-        # 'subtype_description': subtype_description,
-        'gradcam': gradcam_image,  # Ensure this is always set, even if to "Not applicable"
-        # 'processed_original_image': processed_original_image_base64,
-        # 'processed_mask_image': processed_mask_image_base64
+        'gradcam_image': gradcam_image,
+        'segmented_image': segmented_image_base64,
+        'tumor_size_px': tumor_size_px,
+        'tumor_size_mm': tumor_size_mm,
+        'tumor_category': tumor_category,
+        'shape_features_px': shape_features_px,
+        'shape_features_mm': shape_features_mm,
+        'shape_category': shape_category,
+        'predicted_subtype': predicted_subtype_name  # Add the subtype prediction result
     }
     print(results)
     return jsonify(results)
