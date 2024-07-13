@@ -176,24 +176,156 @@ def predict_subtype(model, image, subtype_mapping):
     return predicted_subtype_name
 
 subtype_descriptions = {
-    'Cysts': 'Benign fluid-filled sacs within the breast, ranging from small cysts mimicking solid lesions to larger thick-walled cysts. They may appear as hypoechoic or anechoic (dark) areas with thin or thick walls and may show signs of infection or vascularity in the wall.',
-    'Fibroadenoma': 'Benign breast tumors often presenting as multiple, oval-shaped hypoechoic lesions with well-defined edges. They can vary in size and number and may occur in either breast.',
-    'Galactoceles and sebaceous cysts': 'Galactoceles are milk-filled cysts that commonly occur during lactation, while sebaceous cysts are small lumps filled with sebum. Both appear as well-circumscribed lesions within the breast tissue.',
-    'Post-operative changes and fat necrosis': 'Changes in breast tissue following surgery, which may include features such as oil cysts containing thick material. Fat necrosis may appear as a complex mass or as calcifications within the breast.',
-    'Papiloma': 'Conditions such as acute mastitis which can present with edematous (swollen) breast tissue, or hematomas characterized by a mix of hypoechoic and hyperechoic areas indicating fluid and blood collection.',
-    'Inflammatory conditions': 'Intracanalicular growths that may cause nipple discharge. They are typically small and may not be well visualized on ultrasound.',
-
-    'Carcinoma in situ and microcalcifications': 'Early-stage breast cancer that remains within the ducts or lobules. It is often detected through the presence of microcalcifications on imaging, without forming a palpable lump.',
-    'Inflammatory carcinoma': 'A type of breast cancer that can cause the breast to become red, swollen, and inflamed. It often mimics an infection and may involve lymph node metastasis.',
-    'Lymphoma': 'A rare form of breast cancer that may present as a large, poorly differentiated mass. It can be associated with lymph node metastases, and may not form a discrete mass within the breast.',
-    'Ductal Carcinoma In Situ': 'A non-invasive condition where abnormal cells are contained in the lining of a breast duct.',
-    'Invasive Ductal Carcinoma': 'The most common type of breast cancer, starting in the milk duct and invading surrounding tissue.',
-    'Invasive Lobular Carcinoma': 'Cancer that begins in the milk-producing glands and may not form a lump, often occurring in both breasts.',
-    'Metastatic disease': 'Cancer that has spread from another part of the body to the breast, which may present as a secondary tumor within the breast tissue, sometimes associated with a primary tumor in a different location.'
+    'Cysts': {
+        'description': 'Benign fluid-filled sacs within the breast, ranging from small cysts mimicking solid lesions to larger thick-walled cysts. They may appear as hypoechoic or anechoic (dark) areas with thin or thick walls and may show signs of infection or vascularity in the wall.',
+        'features': {
+            'lesion_shape': 'Fluid-filled sacs',
+            'margins': 'Thin or thick walls',
+            'size': 'Varies from small to large',
+            'depth': 'Not specified',
+            'orientation': 'Not specified',
+            'texture': 'Hypoechoic or anechoic areas'
+        }
+    },
+    'Fibroadenoma': {
+        'description': 'Benign breast tumors often presenting as multiple, oval-shaped hypoechoic lesions with well-defined edges. They can vary in size and number and may occur in either breast.',
+        'features': {
+            'lesion_shape': 'Oval-shaped',
+            'margins': 'Well-defined edges',
+            'size': 'Varies in size and number',
+            'depth': 'Not specified',
+            'orientation': 'Not specified',
+            'texture': 'Hypoechoic lesions'
+        }
+    },
+    'Galactoceles and sebaceous cysts': {
+        'description': 'Galactoceles are milk-filled cysts that commonly occur during lactation, while sebaceous cysts are small lumps filled with sebum. Both appear as well-circumscribed lesions within the breast tissue.',
+        'features': {
+            'lesion_shape': 'Well-circumscribed lumps',
+            'margins': 'Well-defined',
+            'size': 'Small',
+            'depth': 'Not specified',
+            'orientation': 'Not specified',
+            'texture': 'Hypoechoic'
+        }
+    },
+    'Post-operative changes and fat necrosis': {
+        'description': 'Changes in breast tissue following surgery, which may include features such as oil cysts containing thick material. Fat necrosis may appear as a complex mass or as calcifications within the breast.',
+        'features': {
+            'lesion_shape': 'Complex mass',
+            'margins': 'Not specified',
+            'size': 'Varies',
+            'depth': 'Not specified',
+            'orientation': 'Not specified',
+            'texture': 'Contains calcifications'
+        }
+    },
+    'Papilloma': {
+        'description': 'Intracanalicular growths that may cause nipple discharge. They are typically small and may not be well visualized on ultrasound.',
+        'features': {
+            'lesion_shape': 'Intracanalicular growths',
+            'margins': 'Not specified',
+            'size': 'Small',
+            'depth': 'Not specified',
+            'orientation': 'Not specified',
+            'texture': 'Not specified'
+        }
+    },
+    'Inflammatory conditions': {
+        'description': 'Conditions such as acute mastitis which can present with edematous (swollen) breast tissue, or hematomas characterized by a mix of hypoechoic and hyperechoic areas indicating fluid and blood collection.',
+        'features': {
+            'lesion_shape': 'Hematomas',
+            'margins': 'Not specified',
+            'size': 'Varies',
+            'depth': 'Not specified',
+            'orientation': 'Not specified',
+            'texture': 'Hypoechoic and hyperechoic areas'
+        }
+    },
+    'Carcinoma in situ and microcalcifications': {
+        'description': 'Early-stage breast cancer that remains within the ducts or lobules. It is often detected through the presence of microcalcifications on imaging, without forming a palpable lump.',
+        'features': {
+            'lesion_shape': 'Microcalcifications',
+            'margins': 'Not specified',
+            'size': 'Not specified',
+            'depth': 'Not specified',
+            'orientation': 'Not specified',
+            'texture': 'Not specified'
+        }
+    },
+    'Inflammatory carcinoma': {
+        'description': 'A type of breast cancer that can cause the breast to become red, swollen, and inflamed. It often mimics an infection and may involve lymph node metastasis.',
+        'features': {
+            'lesion_shape': 'Not specified',
+            'margins': 'Not specified',
+            'size': 'Varies',
+            'depth': 'Not specified',
+            'orientation': 'Not specified',
+            'texture': 'Red, swollen, and inflamed'
+        }
+    },
+    'Lymphoma': {
+        'description': 'A rare form of breast cancer that may present as a large, poorly differentiated mass. It can be associated with lymph node metastases, and may not form a discrete mass within the breast.',
+        'features': {
+            'lesion_shape': 'Poorly differentiated mass',
+            'margins': 'Not specified',
+            'size': 'Large',
+            'depth': 'Not specified',
+            'orientation': 'Not specified',
+            'texture': 'Poorly differentiated'
+        }
+    },
+    'Ductal Carcinoma In Situ': {
+        'description': 'A non-invasive condition where abnormal cells are contained in the lining of a breast duct.',
+        'features': {
+            'lesion_shape': 'Contained within ducts',
+            'margins': 'Not invasive',
+            'size': 'Not specified',
+            'depth': 'Not specified',
+            'orientation': 'Not specified',
+            'texture': 'Abnormal cells'
+        }
+    },
+    'Invasive Ductal Carcinoma': {
+        'description': 'The most common type of breast cancer, starting in the milk duct and invading surrounding tissue.',
+        'features': {
+            'lesion_shape': 'Invasive mass',
+            'margins': 'Poorly defined',
+            'size': 'Varies',
+            'depth': 'Not specified',
+            'orientation': 'Not specified',
+            'texture': 'Solid mass'
+        }
+    },
+    'Invasive Lobular Carcinoma': {
+        'description': 'Cancer that begins in the milk-producing glands and may not form a lump, often occurring in both breasts.',
+        'features': {
+            'lesion_shape': 'Not always a lump',
+            'margins': 'Not specified',
+            'size': 'Varies',
+            'depth': 'Not specified',
+            'orientation': 'Not specified',
+            'texture': 'Invasive'
+        }
+    },
+    'Metastatic disease': {
+        'description': 'Cancer that has spread from another part of the body to the breast, which may present as a secondary tumor within the breast tissue, sometimes associated with a primary tumor in a different location.',
+        'features': {
+            'lesion_shape': 'Secondary tumor',
+            'margins': 'Not specified',
+            'size': 'Varies',
+            'depth': 'Not specified',
+            'orientation': 'Not specified',
+            'texture': 'Varies'
+        }
+    }
 }
 
 def get_subtype_description(subtype_name):
-    return subtype_descriptions.get(subtype_name, "No description available.")
+    description_info = subtype_descriptions.get(subtype_name, {})
+    description = description_info.get('description', "No description available.")
+    features = description_info.get('features', {})
+    return description, features
 
 # ---------------------Grad CAM---------------------
 
