@@ -22,7 +22,6 @@ def ultrasound_image_modality():
     data = request.get_json()
     print("Received data:", data)
     
-    # Check if image data is present and in the correct format
     if 'image' not in data or not isinstance(data['image'], list) or len(data['image']) == 0:
         return jsonify({'message': 'No image data found in the request'}), 400
     
@@ -41,50 +40,41 @@ def ultrasound_image_modality():
     except (base64.binascii.Error, UnidentifiedImageError):
         return jsonify({'message': 'Invalid image data'}), 400
 
-    # Convert the PIL Image to a NumPy array
     image_data = image_data.convert('RGB')
     image_np = np.array(image_data)
 
-    # Classification
     processed_image_classification = load_preprocess_image_classification(image_np)
     prediction = predict_with_model(classification_model, processed_image_classification)
-    predicted_class_index = np.argmax(prediction, axis=1)[0]  # Extract the first element
+    predicted_class_index = np.argmax(prediction, axis=1)[0]
     predicted_class_name = classes[predicted_class_index]
     print("Predicted class:", predicted_class_name)
     confidence = np.max(prediction)
 
-    # Define a confidence threshold
-    CONFIDENCE_THRESHOLD = 0.9  # Adjust based on your model's performance and requirements
-
+    CONFIDENCE_THRESHOLD = 0.9
     if confidence < CONFIDENCE_THRESHOLD:
         return jsonify({'message': 'The submitted image could not be confidently classified as an ultrasound image.', 'isUltrasound': False}), 400
 
-    # Initialize variables for results
     subtype_full_name = "Not applicable"
     subtype_description = "Not applicable"
+    features = {}
     gradcam_image = None
     processed_original_image_base64 = None
     processed_mask_image_base64 = None
 
-    # Subtype identification
     if predicted_class_name in ['Malignant', 'Benign']:
-        # Diagnosis classification
         if predicted_class_name == 'Malignant':
             subtype_full_name = predict_subtype(malignant_subtype_model, image_np, malignant_subtype_mapping)
         else:
             subtype_full_name = predict_subtype(benign_subtype_model, image_np, benign_subtype_mapping)
 
-        subtype_description = get_subtype_description(subtype_full_name)
-
+        subtype_description, features = get_subtype_description(subtype_full_name)
         print("Subtype:", subtype_full_name)
 
-        # Applying Grad CAM
         gradcam_img_array = preprocess_input(processed_image_classification)
         heatmap = make_gradcam_heatmap(gradcam_img_array, classification_model, 'conv5_block3_out')
         print('Generating Grad-CAM heatmap...')
         gradcam_image = display_gradcam(image_np, heatmap)
 
-        # U-Net Segmentation
         print("Proceeding to segmentation...")
         processed_image_segmentation = load_and_prep_image_segmentation(image_np)
         pred_mask = predict_with_model(segmentation_model, processed_image_segmentation)
@@ -120,6 +110,7 @@ def ultrasound_image_modality():
         'classification': predicted_class_name,
         'subtype': subtype_full_name,
         'subtype_description': subtype_description,
+        'features': features,
         'gradcam': gradcam_image if gradcam_image is not None else "Unknown",
         'processed_original_image': processed_original_image_base64 if processed_original_image_base64 is not None else "Unknown",
         'processed_mask_image': processed_mask_image_base64 if processed_mask_image_base64 is not None else "Unknown"
