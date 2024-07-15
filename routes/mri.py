@@ -7,11 +7,13 @@ from tensorflow.keras.applications.densenet import preprocess_input
 import cv2
 from models.mri_model import load_classification_mri_model, load_segmentation_ultrasound_model, load_subtype_model
 from utils.mri_util import load_preprocess_image, predict, classes, grad_cam, overlay_heatmap, segment_tumor, convert_to_base64, calculate_max_diameter, categorize_tumor_size, calculate_tumor_shape_features, categorize_shape, predict_subtype
-
+from models.image_classifier_model import load_image_classifier
+from utils.image_classifier_util import (load_preprocess_image_for_classifier, classify_image_modality, image_modalities)
 
 classification_model = load_classification_mri_model()
 segmentation_model = load_segmentation_ultrasound_model()
 subtype_model = load_subtype_model()
+image_classifier_model = load_image_classifier()
 
 def mri_image_modality():
     data = request.get_json()
@@ -37,6 +39,15 @@ def mri_image_modality():
 
     image_data = image_data.convert('RGB')
     image_np = np.array(image_data)
+
+    # Classify image modality
+    processed_image_modality = load_preprocess_image_for_classifier(image_np)
+    modality_index = classify_image_modality(processed_image_modality, image_classifier_model)
+    predicted_modality = image_modalities[modality_index]
+    print("Predicted modality:", predicted_modality)
+
+    if predicted_modality == 'Ultrasound':
+        return jsonify({'message': 'The submitted image could not be confidently classified as an MRI image.', 'isMRI': False}), 400
 
     gradcam_image = None
     
