@@ -5,18 +5,21 @@ import io
 from PIL import Image, UnidentifiedImageError
 from tensorflow.keras.applications.resnet50 import preprocess_input
 import cv2
-from utils.us_util import (load_preprocess_image_classification, predict_subtype, benign_subtype_mapping, 
-                   malignant_subtype_mapping, make_gradcam_heatmap, display_gradcam, get_subtype_description,
-                   load_and_prep_image_segmentation, apply_black_lesion_on_white_background, apply_lesion_on_white_background,
-                   classes)
+from utils.us_util import (load_preprocess_image_classification,
+                   predict_subtype, benign_subtype_mapping, malignant_subtype_mapping, make_gradcam_heatmap, 
+                   display_gradcam, get_subtype_description, load_and_prep_image_segmentation, 
+                   apply_black_lesion_on_white_background, apply_lesion_on_white_background, classes)
 from models.us_model import (load_segmentation_model, 
                     load_malignant_subtype_model, load_benign_subtype_model,
                     load_classification_model, predict_with_model)
+from models.image_classifier_model import load_image_classifier
+from utils.image_classifier_util import (load_preprocess_image_for_classifier, classify_image_modality, image_modalities)
 
 classification_model = load_classification_model()
 benign_subtype_model = load_benign_subtype_model()
 malignant_subtype_model = load_malignant_subtype_model()
 segmentation_model = load_segmentation_model()
+image_classifier_model = load_image_classifier()
 
 def ultrasound_image_modality():
     data = request.get_json()
@@ -42,6 +45,15 @@ def ultrasound_image_modality():
 
     image_data = image_data.convert('RGB')
     image_np = np.array(image_data)
+
+    # Classify image modality
+    processed_image_modality = load_preprocess_image_for_classifier(image_np)
+    modality_index = classify_image_modality(processed_image_modality, image_classifier_model)
+    predicted_modality = image_modalities[modality_index]
+    print("Predicted modality:", predicted_modality)
+
+    if predicted_modality == 'MRI':
+        return jsonify({'message': 'The submitted image could not be confidently classified as an ultrasound image.', 'isUltrasound': False}), 400
 
     processed_image_classification = load_preprocess_image_classification(image_np)
     prediction = predict_with_model(classification_model, processed_image_classification)
