@@ -8,8 +8,9 @@ import cv2
 from models.mri_model import load_classification_mri_model, load_segmentation_ultrasound_model, load_subtype_model
 from utils.mri_util import load_preprocess_image, predict, classes, grad_cam, overlay_heatmap, segment_tumor, convert_to_base64, calculate_max_diameter, categorize_tumor_size, calculate_tumor_shape_features, categorize_shape, predict_subtype
 from models.image_classifier_model import load_image_classifier_mri
-from utils.image_classifier_util import ( classify_image_modality, image_modalities, load_preprocess_image_for_classifier_mri)
+from utils.image_classifier_util import classify_image_modality, image_modalities, load_preprocess_image_for_classifier_mri
 
+# Load models
 classification_model = load_classification_mri_model()
 segmentation_model = load_segmentation_ultrasound_model()
 subtype_model = load_subtype_model()
@@ -49,13 +50,18 @@ def mri_image_modality():
     if predicted_modality == 'Ultrasound':
         return jsonify({'message': 'The submitted image could not be confidently classified as an MRI image.', 'isMRI': False}), 400
 
-    gradcam_image = None
-    
     # Ensure target size is 128x128 for classification and segmentation models
     processed_image_classification = load_preprocess_image(image_np, target_size=(128, 128))
     print(f"Processed image shape: {processed_image_classification.shape}")
+    
     prediction = classification_model.predict(processed_image_classification)
     print(f"Classification prediction: {prediction}")
+
+    # Add confidence threshold check
+    confidence = np.max(prediction)
+    CONFIDENCE_THRESHOLD = 0.8
+    if confidence < CONFIDENCE_THRESHOLD:
+        return jsonify({'message': 'The submitted image could not be confidently classified as an MRI image.', 'isMRI': False}), 400
 
     predicted_class_index = np.argmax(prediction, axis=1)[0]
     predicted_class_name = classes[predicted_class_index]
@@ -107,3 +113,4 @@ def mri_image_modality():
     }
     print(results)
     return jsonify(results)
+
