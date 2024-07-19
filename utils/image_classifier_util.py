@@ -18,3 +18,12 @@ def classify_image_modality(image, model):
 
 # Image modalities
 image_modalities = ['Ultrasound', 'MRI']
+
+
+
+# Function to preprocess images for the image classifier
+def load_preprocess_image_for_classifier_mri(image_np, size=128):
+    image = Image.fromarray(image_np).resize((size, size))
+    processed_image = np.array(image)
+    processed_image = np.expand_dims(processed_image, axis=0)
+    return processed_image
