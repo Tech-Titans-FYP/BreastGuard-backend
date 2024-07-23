@@ -1,17 +1,19 @@
 import numpy as np
+import cv2
 from flask import request, jsonify
 import base64
 import io
 from PIL import Image, UnidentifiedImageError
 from tensorflow.keras.applications.resnet50 import preprocess_input
-import cv2
 from utils.us_util import (load_preprocess_image_classification,
-                   predict_subtype, benign_subtype_mapping, malignant_subtype_mapping, make_gradcam_heatmap, 
-                   display_gradcam, get_subtype_description, load_and_prep_image_segmentation, 
-                   apply_black_lesion_on_white_background, apply_lesion_on_white_background, classes)
-from models.us_model import (load_segmentation_model, 
-                    load_malignant_subtype_model, load_benign_subtype_model,
-                    load_classification_model, predict_with_model)
+                           predict_subtype, benign_subtype_mapping, malignant_subtype_mapping, 
+                           make_gradcam_heatmap, display_gradcam, get_subtype_description, 
+                           load_and_prep_image_segmentation, apply_black_lesion_on_white_background, 
+                           apply_lesion_on_white_background, classes, calculate_tumor_size_mm2,
+                           get_bounding_boxes, draw_bounding_boxes_on_image, 
+                           image_to_base64)
+from models.us_model import (load_segmentation_model, load_malignant_subtype_model, load_benign_subtype_model,
+                             load_classification_model, predict_with_model)
 from models.image_classifier_model import load_image_classifier
 from utils.image_classifier_util import (load_preprocess_image_for_classifier, classify_image_modality, image_modalities)
 
@@ -72,6 +74,11 @@ def ultrasound_image_modality():
     gradcam_image = None
     processed_original_image_base64 = None
     processed_mask_image_base64 = None
+    bounding_boxes_image_base64 = None
+
+    tumor_size_pixels = None
+    tumor_size_mm2 = None
+    bounding_boxes = []
 
     if predicted_class_name in ['Malignant', 'Benign']:
         if predicted_class_name == 'Malignant':
@@ -113,10 +120,20 @@ def ultrasound_image_modality():
         
         processed_original_image_base64 = base64.b64encode(processed_original_image_buffer.getvalue()).decode('utf-8')
         processed_mask_image_base64 = base64.b64encode(processed_mask_image_buffer.getvalue()).decode('utf-8')
+
+        # Calculate tumor size, volume, and bounding boxes
+        pixel_density = 0.1  # Example: 1 pixel = 0.1 mm
+        tumor_size_pixels, tumor_size_mm2 = calculate_tumor_size_mm2(binary_mask_resized, pixel_density)
+        bounding_boxes = [tuple(map(int, box)) for box in get_bounding_boxes(binary_mask_resized)]  # Convert to int
+
+        # Draw bounding boxes on the original image
+        image_with_boxes = draw_bounding_boxes_on_image(original_image_np.copy(), bounding_boxes)
+        bounding_boxes_image_base64 = image_to_base64(image_with_boxes)
     else:
         gradcam_image = "Not applicable"
         processed_original_image_base64 = "Not applicable"
         processed_mask_image_base64 = "Not applicable"
+        bounding_boxes_image_base64 = "Not applicable"
 
     results = {
         'classification': predicted_class_name,
@@ -125,7 +142,11 @@ def ultrasound_image_modality():
         'features': features,
         'gradcam': gradcam_image if gradcam_image is not None else "Unknown",
         'processed_original_image': processed_original_image_base64 if processed_original_image_base64 is not None else "Unknown",
-        'processed_mask_image': processed_mask_image_base64 if processed_mask_image_base64 is not None else "Unknown"
+        'processed_mask_image': processed_mask_image_base64 if processed_mask_image_base64 is not None else "Unknown",
+        'tumor_size_pixels': tumor_size_pixels,
+        'tumor_size_mm2': tumor_size_mm2,
+        'bounding_boxes': bounding_boxes,
+        'bounding_boxes_image': bounding_boxes_image_base64
     }
     print(results)
     return jsonify(results)
