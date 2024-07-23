@@ -128,6 +128,47 @@ def resize_mask_for_display(mask, display_size=(300, 300)):
     mask_image = Image.fromarray((mask * 255).astype(np.uint8))  # Convert to an image
     return mask_image.resize(display_size)
 
+def calculate_tumor_size(mask):
+    return np.sum(mask)
+
+def calculate_tumor_size_mm2(mask, pixel_density):
+    # Convert the size from pixels to square millimeters
+    size_in_pixels = calculate_tumor_size(mask)
+    size_in_mm2 = size_in_pixels * (pixel_density ** 2)
+    return int(size_in_pixels), float(size_in_mm2)  # Ensure these are JSON serializable
+
+def calculate_tumor_volume(masks, slice_thickness=1):
+    volumes = []
+    for mask in masks:
+        size = calculate_tumor_size(mask)
+        volume = size * slice_thickness
+        volumes.append(volume)
+    return float(np.sum(volumes))  # Ensure this is JSON serializable
+
+def get_bounding_boxes(mask):
+    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    bounding_boxes = [cv2.boundingRect(contour) for contour in contours]
+    return bounding_boxes
+
+def draw_bounding_boxes_on_image(image, bounding_boxes):
+    # Ensure the image is in grayscale before converting
+    if len(image.shape) == 2:
+        image_bgr = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    elif len(image.shape) == 3 and image.shape[2] == 1:
+        image_bgr = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    elif len(image.shape) == 3 and image.shape[2] == 3:
+        image_bgr = image  # Already in BGR format
+    else:
+        raise ValueError(f"Unexpected image shape: {image.shape}")
+
+    for (x, y, w, h) in bounding_boxes:
+        cv2.rectangle(image_bgr, (x, y), (x + w, y + h), (0, 0, 255), 2)  # Red color bounding box with thickness 2
+    return image_bgr
+
+def image_to_base64(image):
+    _, buffer = cv2.imencode('.png', image)
+    return base64.b64encode(buffer).decode('utf-8')
+
 # ---------------------Diagnosis classification---------------------
 def preprocess_for_subtype(image_np, size=256):
     image = Image.fromarray(image_np).resize((size, size))
